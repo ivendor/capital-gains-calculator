@@ -13,7 +13,9 @@ Final balance:
   Sharesight: -17855.31 (GBP)
   Sharesight: 7474.05 (USD)
 Dividends: £6.92
+  Sharesight: £6.92
 Dividend taxes: £1.78
+  Sharesight: £1.78
 Interest: £0.00
 Disposal proceeds: £12995.82
 

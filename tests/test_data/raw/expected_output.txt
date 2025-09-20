@@ -13,6 +13,7 @@ Final portfolio:
 Final balance:
   Unknown: -28486.60 (USD)
 Dividends: £2719.29
+  Unknown: £2719.29
 Dividend taxes: £0.00
 Interest: £0.00
 Disposal proceeds: £11421.84
