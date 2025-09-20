@@ -6,6 +6,8 @@ import datetime
 from decimal import Decimal
 from typing import Final
 
+from dateutil.relativedelta import relativedelta
+
 from .model import TaxTreaty
 
 # Allowances from
@@ -69,3 +71,7 @@ TICKER_RENAMES: Final[dict[str, str]] = {
 }
 
 COUNTRY_CURRENCY = "GBP"
+
+MIN_DAYS_IN_YEAR: Final = 365
+
+ERI_TAX_DATE_DELTA: Final = relativedelta(months=6)

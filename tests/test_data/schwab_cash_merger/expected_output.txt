@@ -6,14 +6,13 @@ INFO: No mssb folder provided
 INFO: No sharesight file provided
 INFO: No raw file provided
 INFO: No vanguard file provided
+INFO: No ERI raw file provided
 First pass completed
 Final portfolio:
 Final balance:
   Charles Schwab: 1000.00 (USD)
 Dividends: £0.00
 Dividend taxes at source: £0.00
-UK Interest: £0.00
-Foreign Interest: £0.00
 Disposal proceeds: £711.69
 
 
@@ -27,6 +26,8 @@ Capital gain: £0.00
 Capital loss: £1071.81
 Total capital gain: £-1071.81
 Taxable capital gain: £0
+UK Interest: £0.00
+Foreign Interest: £0.00
 
 Generate calculations report
 All done!

@@ -6,36 +6,36 @@ INFO: No raw file provided
 INFO: No vanguard file provided
 First pass completed
 Final portfolio:
+  FOO: 30.50
   GE: 1.00
   NVDA: 1.00
   GOOG: 163.20
-  FOO: 30.50
 Final balance:
   Charles Schwab: 9477.90 (USD)
   Trading212: 33391.30 (GBP)
   Morgan Stanley: 1.00 (USD)
 Dividends: £0.10
 Dividend taxes at source: £0.00
-UK Interest: £0.00
-Foreign Interest: £0.00
-Disposal proceeds: £42783.83
+Disposal proceeds: £43798.48
 
-WARNING: Bed and breakfasting for FOO. Disposed on 2021-03-03 and acquired again on 2021-04-02
+WARNING: Bed and breakfasting for FOO. Disposed on 2020-05-03 and acquired again on 2020-06-02
 
 Second pass completed
 Portfolio at the end of 2020/2021 tax year:
-  GE: 1.00, £8.07
+  FOO: 30.50, £645.41
+  GE: 1.00, £10.33
   NVDA: 1.00, £401.01
-  FOO: 30.50, £543.97
   GOOG: 172.00, £12516.55
 For tax year 2020/2021:
 Number of disposals: 4
-Disposal proceeds: £42783.83
-Allowable costs: £17670.35
-Capital gain: £25113.48
+Disposal proceeds: £43798.48
+Allowable costs: £18648.54
+Capital gain: £25149.94
 Capital loss: £0.00
-Total capital gain: £25113.48
-Taxable capital gain: £12813.48
+Total capital gain: £25149.94
+Taxable capital gain: £12849.94
+UK Interest: £0.00
+Foreign Interest: £25.36
 
 Generate calculations report
 All done!

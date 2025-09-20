@@ -20,7 +20,9 @@ from .const import (
     COUNTRY_CURRENCY,
     DIVIDEND_ALLOWANCES,
     DIVIDEND_DOUBLE_TAXATION_RULES,
+    ERI_TAX_DATE_DELTA,
     INTERNAL_START_DATE,
+    MIN_DAYS_IN_YEAR,
 )
 from .currency_converter import CurrencyConverter
 from .current_price_fetcher import CurrentPriceFetcher
@@ -43,6 +45,10 @@ from .model import (
     CalculationLog,
     CapitalGainsReport,
     Dividend,
+    ExcessReportedIncome,
+    ExcessReportedIncomeDistribution,
+    ExcessReportedIncomeDistributionLog,
+    ExcessReportedIncomeLog,
     ForeignCurrencyAmount,
     HmrcTransactionData,
     HmrcTransactionLog,
@@ -54,7 +60,7 @@ from .model import (
 from .parsers import read_broker_transactions, read_initial_prices
 from .spin_off_handler import SpinOffHandler
 from .transaction_log import add_to_list, has_key
-from .util import round_decimal
+from .util import approx_equal, round_decimal
 
 LOGGER = logging.getLogger(__name__)
 
@@ -103,7 +109,7 @@ def _approx_equal_price_rounding(
     )
     if in_acceptable_range:
         return True
-    accptable_amount = _approx_equal(amount_on_record, calculated_amount)
+    accptable_amount = approx_equal(amount_on_record, calculated_amount)
     LOGGER.debug(
         "Amount amount_on_record %.6f vs calculated_amount %s in %s",
         amount_on_record,
@@ -111,12 +117,6 @@ def _approx_equal_price_rounding(
         "acceptable range" if accptable_amount else "error",
     )
     return accptable_amount
-
-
-# It is not clear how Schwab or other brokers round the dollar value,
-# so assume the values are equal if they are within $0.01.
-def _approx_equal(val_a: Decimal, val_b: Decimal) -> bool:
-    return abs(val_a - val_b) < Decimal("0.01")
 
 
 class CapitalGainsCalculator:
@@ -157,11 +157,21 @@ class CapitalGainsCalculator:
 
         self.portfolio: dict[str, Position] = defaultdict(Position)
         self.spin_offs: dict[datetime.date, list[SpinOff]] = defaultdict(list)
+        self.eris: ExcessReportedIncomeLog = defaultdict(dict)
+        self.eris_distribution: ExcessReportedIncomeDistributionLog = defaultdict(
+            lambda: defaultdict(ExcessReportedIncomeDistribution)
+        )
 
     def date_in_tax_year(self, date: datetime.date) -> bool:
         """Check if date is within current tax year."""
         assert is_date(date)
         return self.tax_year_start_date <= date <= self.tax_year_end_date
+
+    def get_eri(self, symbol: str, date: datetime.date) -> ExcessReportedIncome | None:
+        """Return Excess Reported Income at specific date for the input symbol."""
+        if date in self.eris and symbol in self.eris[date]:
+            return self.eris[date][symbol]
+        return None
 
     def add_acquisition(
         self,
@@ -350,6 +360,90 @@ class CapitalGainsCalculator:
             self.converter.to_gbp_for(transaction.fees, transaction),
         )
 
+    def handle_eri(
+        self,
+        transaction: BrokerTransaction,
+    ) -> None:
+        """Handle the Excess Reported Income.
+
+        UK has a specific tax regime which applies to UK investors in offshore
+        funds.
+
+        https://www.gov.uk/government/publications/offshore-funds-self-assessment-helpsheet-hs265/hs265-offshore-funds
+
+        Example of UK offshore funds are the most common UCITS ETFs (Vanguard,
+        Blackrock, XTrackers) that are normally located in Ireland.
+
+        When those funds are "reporting" funds, that is, enlisted in HMRC
+        official list of reporting funds:
+        https://www.gov.uk/government/publications/offshore-funds-list-of-reporting-funds
+        We need to declare the excess income periodically (yearly) from these
+        funds.
+
+        Excess Reported Income (ERI) is all the income reported by the fund
+        not distributed to you (normally through dividends).
+        Note that both Accumulating and Distributing funds can have reportable
+        income and require reporting.
+
+        The ERI is calculated based on the number shares owned at the end of
+        the fund end reporting day for each fund.
+        You multiply number of shares times the Reportable income amount per
+        share as reported by each fund.
+
+        Fund reports are directly provided in the fund website (i.e. Blackrock,
+        Vanguard, XTrackers, etc) on a yearly fashion.
+
+        The ERI has two consequences:
+
+        1) It increases your share cost basis at the time it materializes.
+        2) It represents taxable income at a future date, exactly 6 calendar
+           months since the reporting day.
+
+        Note that ERI also takes into account Bed and Breakfast so you're due
+        ERI even if you sell before the reporting day and buy within 30 days.
+        See https://www.rawknowledge.ltd/eri-explained-four-tricky-questions-answered/
+
+        For some calculation example beside HMRC website you can use Vanguard
+        FAQ:
+        https://www.vanguardinvestor.co.uk/content/dam/intl/uk-retail-direct/general/uk-reporting-fund-faq.pdf
+
+        Note that the current implementation doesn't take into account
+        equalisation strategy which is an optional fund reporting feature that
+        allows for pro rata reporting when you buy the fund shares within a
+        reporting period.
+
+        """
+        distribution_date = transaction.date + ERI_TAX_DATE_DELTA
+
+        assert transaction.symbol is not None
+        assert transaction.price is not None
+
+        if transaction.price == Decimal(0):
+            return
+
+        price = self.converter.to_gbp_for(
+            transaction.price,
+            transaction,
+        )
+
+        for report_date, report_by_symbol in self.eris.items():
+            if (
+                transaction.symbol in report_by_symbol
+                and abs((report_date - transaction.date).days) < MIN_DAYS_IN_YEAR
+            ):
+                raise InvalidTransactionError(
+                    transaction,
+                    "A reporting period within less than a year for this "
+                    f"ticker already exist at {report_date}",
+                )
+
+        self.eris[transaction.date][transaction.symbol] = ExcessReportedIncome(
+            price=price,
+            symbol=transaction.symbol,
+            date=transaction.date,
+            distribution_date=distribution_date,
+        )
+
     def convert_to_hmrc_transactions(
         self,
         transactions: list[BrokerTransaction],
@@ -369,6 +463,10 @@ class CapitalGainsCalculator:
         balance_history: list[Decimal] = []
 
         for i, transaction in enumerate(transactions):
+            if transaction.action == ActionType.EXCESS_REPORTED_INCOME:
+                self.handle_eri(transaction)
+                continue
+
             new_balance = balance[(transaction.broker, transaction.currency)]
             if transaction.action is ActionType.TRANSFER:
                 new_balance += get_amount_or_fail(transaction)
@@ -494,8 +592,6 @@ class CapitalGainsCalculator:
             print(f"  {broker}: {round_decimal(amount, 2)} ({currency})")
         print(f"Dividends: £{round_decimal(sum_dividends, 2)}")
         print(f"Dividend taxes at source: £{round_decimal(-sum_dividends_tax, 2)}")
-        print(f"UK Interest: £{round_decimal(self.total_uk_interest, 2)}")
-        print(f"Foreign Interest: £{round_decimal(self.total_foreign_interest, 2)}")
         print(f"Disposal proceeds: £{round_decimal(total_disposal_proceeds, 2)}")
         print()
 
@@ -536,6 +632,7 @@ class CapitalGainsCalculator:
                     new_pool_cost=position.amount + bnb_acquisition.amount,
                     fees=bed_and_breakfast_fees,
                     allowable_cost=acquisition.amount,
+                    eri=bnb_acquisition.eri,
                 )
             )
         self.portfolio[symbol] += Position(
@@ -669,8 +766,13 @@ class CapitalGainsCalculator:
 
         # Bed and breakfast rule next
         if disposal_quantity > 0:
+            eri = self.get_eri(symbol, date_index)
+            eri_distribution = ExcessReportedIncomeDistribution()
+
             for i in range(BED_AND_BREAKFAST_DAYS):
                 search_index = date_index + datetime.timedelta(days=i + 1)
+
+                eri = eri or self.get_eri(symbol, search_index)
                 if has_key(self.acquisition_list, search_index, symbol):
                     acquisition = self.acquisition_list[search_index][symbol]
 
@@ -721,17 +823,29 @@ class CapitalGainsCalculator:
                     bed_and_breakfast_allowable_cost = (
                         available_quantity * acquisition_price
                     ) + fees
+                    if eri:
+                        eri_distribution = ExcessReportedIncomeDistribution(
+                            price=eri.price,
+                            amount=available_quantity * eri.price,
+                            quantity=available_quantity,
+                        )
+                        if self.date_in_tax_year(eri.distribution_date):
+                            self.eris_distribution[eri.distribution_date][symbol] += (
+                                eri_distribution
+                            )
+
                     bed_and_breakfast_gain = (
                         bed_and_breakfast_proceeds - bed_and_breakfast_allowable_cost
                     )
                     chargeable_gain += bed_and_breakfast_gain
                     LOGGER.debug(
                         "BED & BREAKFAST, quantity %d, gain %s, disposal price %s, "
-                        "acquisition price %s",
+                        "acquisition price %s, added_excess_income: %s",
                         available_quantity,
                         bed_and_breakfast_gain,
                         disposal_price,
                         acquisition_price,
+                        eri_distribution.amount,
                     )
                     disposal_quantity -= available_quantity
                     proceeds_amount -= available_quantity * disposal_price
@@ -748,8 +862,9 @@ class CapitalGainsCalculator:
                         search_index,
                         symbol,
                         available_quantity,
-                        amount_delta,
+                        amount_delta + eri_distribution.amount,
                         Decimal(0),
+                        eri,
                     )
                     calculation_entries.append(
                         CalculationEntry(
@@ -810,7 +925,62 @@ class CapitalGainsCalculator:
         ), f"disposal quantity {disposal_quantity}"
         self.portfolio[symbol] = Position(current_quantity, current_amount)
         chargeable_gain = round_decimal(chargeable_gain, 2)
-        return chargeable_gain, calculation_entries, spin_off_entry
+        return (
+            chargeable_gain,
+            calculation_entries,
+            spin_off_entry,
+        )
+
+    def process_eri(
+        self,
+        symbol: str,
+        date_index: datetime.date,
+    ) -> CalculationEntry | None:
+        """Process single excess reported income."""
+        eri = self.get_eri(symbol, date_index)
+        assert eri is not None
+        amount = self.portfolio[eri.symbol].amount
+        quantity = self.portfolio[eri.symbol].quantity
+
+        if quantity == 0:
+            return None
+
+        allowable_cost = quantity * eri.price
+
+        if allowable_cost == 0:
+            return None
+
+        new_amount = amount + allowable_cost
+        LOGGER.debug(
+            "Detected excess reported income of %s on %s, "
+            "modyfing the cost amount from %d to %d",
+            eri.symbol,
+            eri.date,
+            amount,
+            new_amount,
+        )
+        self.portfolio[eri.symbol].amount = new_amount
+
+        if self.date_in_tax_year(eri.distribution_date):
+            self.eris_distribution[eri.distribution_date][symbol] += (
+                ExcessReportedIncomeDistribution(
+                    price=eri.price,
+                    amount=allowable_cost,
+                    quantity=quantity,
+                )
+            )
+
+        return CalculationEntry(
+            RuleType.EXCESS_REPORTED_INCOME,
+            quantity=quantity,
+            amount=-amount,
+            new_quantity=quantity,
+            gain=None,
+            fees=Decimal(0),
+            new_pool_cost=new_amount,
+            allowable_cost=allowable_cost,
+            eri=eri,
+        )
 
     def process_dividends(
         self,
@@ -851,7 +1021,7 @@ class CapitalGainsCalculator:
                     else:
                         assert treaty is not None
                         expected_tax = treaty.country_rate * -foreign_amount.amount
-                        if not _approx_equal(expected_tax, tax.amount):
+                        if not approx_equal(expected_tax, tax.amount):
                             LOGGER.warning(
                                 "Determined double taxation treaty does not match the "
                                 "base taxation rules (expected %.2f base tax for %s "
@@ -993,6 +1163,46 @@ class CapitalGainsCalculator:
                                 f"spin-off${spin_off.source}"
                             ] = [spin_off_entry]
 
+            # Excess Reported incomes should be reported at the end of the day
+            if date_index in self.eris:
+                for symbol in self.eris[date_index]:
+                    maybe_entry = self.process_eri(symbol, date_index)
+                    if not maybe_entry:
+                        continue
+
+                    if date_index >= tax_year_start_index:
+                        eri = maybe_entry.eri
+                        assert eri is not None
+                        calculation_log[date_index][
+                            f"excess-reported-income${symbol}"
+                        ] = [maybe_entry]
+
+            # Lastly all the ERI distribution events
+            if date_index in self.eris_distribution:
+                for symbol in self.eris_distribution[date_index]:
+                    data = self.eris_distribution[date_index][symbol]
+                    self.total_foreign_interest += data.amount
+                    self.calculation_log_yields[date_index][
+                        f"excess-reported-income-distribution${symbol}"
+                    ] = [
+                        CalculationEntry(
+                            RuleType.EXCESS_REPORTED_INCOME_DISTRIBUTION,
+                            quantity=data.quantity,
+                            amount=data.amount,
+                            new_quantity=data.quantity,
+                            gain=None,
+                            fees=Decimal(0),
+                            new_pool_cost=data.amount,
+                            allowable_cost=None,
+                            eri=ExcessReportedIncome(
+                                price=data.price,
+                                symbol=symbol,
+                                date=date_index - ERI_TAX_DATE_DELTA,
+                                distribution_date=date_index,
+                            ),
+                        )
+                    ]
+
         print("\nSecond pass completed")
         allowance = CAPITAL_GAIN_ALLOWANCES.get(self.tax_year)
         dividend_allowance = DIVIDEND_ALLOWANCES.get(self.tax_year)
@@ -1066,6 +1276,7 @@ def main() -> int:
         args.sharesight,
         args.raw,
         args.vanguard,
+        args.eri_raw_file,
     )
     converter = CurrencyConverter(args.exchange_rates_file)
     initial_prices = InitialPrices(read_initial_prices(args.initial_prices))

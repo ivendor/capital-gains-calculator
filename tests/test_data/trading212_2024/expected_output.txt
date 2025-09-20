@@ -5,14 +5,13 @@ INFO: No mssb folder provided
 INFO: No sharesight file provided
 INFO: No raw file provided
 INFO: No vanguard file provided
+INFO: No ERI raw file provided
 First pass completed
 Final portfolio:
 Final balance:
   Trading212: 1758.05 (GBP)
 Dividends: £0.00
 Dividend taxes at source: £0.00
-UK Interest: £0.00
-Foreign Interest: £0.00
 Disposal proceeds: £3143.21
 
 
@@ -26,6 +25,8 @@ Capital gain: £757.15
 Capital loss: £0.00
 Total capital gain: £757.15
 Taxable capital gain: £0
+UK Interest: £0.00
+Foreign Interest: £0.00
 
 Generate calculations report
 All done!

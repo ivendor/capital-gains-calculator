@@ -4,6 +4,7 @@ INFO: No trading212 folder provided
 INFO: No mssb folder provided
 INFO: No sharesight file provided
 INFO: No raw file provided
+INFO: No ERI raw file provided
 First pass completed
 Final portfolio:
   FOO: 1550.00
@@ -12,8 +13,6 @@ Final balance:
   Vanguard: 1423.59 (GBP)
 Dividends: £0.00
 Dividend taxes at source: £0.00
-UK Interest: £0.00
-Foreign Interest: £396.66
 Disposal proceeds: £104.06
 
 
@@ -29,6 +28,8 @@ Capital gain: £2.20
 Capital loss: £0.00
 Total capital gain: £2.20
 Taxable capital gain: £0
+UK Interest: £0.00
+Foreign Interest: £396.66
 
 Generate calculations report
 All done!

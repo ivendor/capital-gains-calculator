@@ -177,6 +177,8 @@ def test_run_with_example_files() -> None:
         "tests/test_data/trading212/",
         "--mssb",
         "tests/test_data/mssb/",
+        "--eri-raw-file",
+        "tests/test_data/eri_raw.csv",
         "--no-pdflatex",
     ]
     try:

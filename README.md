@@ -99,6 +99,8 @@ You will need several input files:
     [`initial_prices.csv`](https://github.com/KapJI/capital-gains-calculator/blob/main/cgt_calc/resources/initial_prices.csv) comes pre-packaged, you need to use the same format.
 -   (Optional) Monthly exchange rates prices from [gov.uk](https://www.gov.uk/government/collections/exchange-rates-for-customs-and-vat).
     `exchange_rates.csv` gets generated automatically using HMRC API, you need to use the same format if you want to override it.
+-   (Optional) Excess Reported Income history to calculate additional incomes from [offshore funds](https://www.gov.uk/government/publications/offshore-funds-self-assessment-helpsheet-hs265/hs265-offshore-funds). These are required to calculate proper CGT and taxes if you hold the most common UCITS ETF or funds not located in UK (standard Fund Manager like Vangaurd, Blackrock, XTrackers, etc are located in Ireland). You can find the full list of funds that requires this at [HMRC](https://www.gov.uk/government/publications/offshore-funds-list-of-reporting-funds).
+    [See example](https://github.com/KapJI/capital-gains-calculator/blob/main/tests/test_data/eri_raw.csv)
 
 Then run (you can omit the brokers you don't use):
 
