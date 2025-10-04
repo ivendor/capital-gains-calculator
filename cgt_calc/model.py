@@ -440,6 +440,21 @@ class CapitalGainsReport:
                     entry.unrealized_gains_str() if self.show_unrealized_gains else ""
                 )
                 out += f"{entry!s}{unrealized_gains_str}\n"
+        eris = list(
+            self._filter_calculation_log(
+                self.calculation_log_yields,
+                RuleType.EXCESS_REPORTED_INCOME_DISTRIBUTION,
+            )
+        )
+        if eris:
+            out += "ERI distributed:\n"
+            for item in self._filter_calculation_log(
+                self.calculation_log_yields,
+                RuleType.EXCESS_REPORTED_INCOME_DISTRIBUTION,
+            ):
+                assert item.eri
+                out += f"  {item.eri.symbol}: £{round_decimal(item.amount,2)}\n"
+
         out += f"For tax year {self.tax_year}/{self.tax_year + 1}:\n"
         out += f"Number of disposals: {self.disposal_count}\n"
         out += f"Disposal proceeds: £{self.disposal_proceeds}\n"

@@ -29,6 +29,9 @@ Portfolio at the end of 2020/2021 tax year:
   VNRG: 1.00, £8.98
   NVDA: 1.00, £401.01
   GOOG: 172.00, £12516.55
+ERI distributed:
+  VUAG: £22.26
+  VNRG: £0.91
 For tax year 2020/2021:
 Number of disposals: 4
 Disposal proceeds: £43798.48
