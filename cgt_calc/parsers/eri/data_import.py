@@ -15,15 +15,14 @@ from cgt_calc.util import approx_equal
 
 from .blackrock import BlackrockParser
 from .raw import COLUMNS, RAW_DATE_FORMAT, read_eri_raw
+from .vanguard import VanguardParser
 
 if TYPE_CHECKING:
     import datetime
 
     from .model import EriParser, EriTransaction
 
-ERI_PARSERS: list[EriParser] = [
-    BlackrockParser(),
-]
+ERI_PARSERS: list[EriParser] = [BlackrockParser(), VanguardParser()]
 
 
 def is_running_in_site_packages() -> bool:

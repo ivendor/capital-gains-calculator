@@ -218,7 +218,7 @@ The tool already includes such yearly history in the [resources folder](https://
 
 Currently bundled data:
 
--   [Vanguard Funds Plc 2018-2024](https://github.com/KapJI/capital-gains-calculator/blob/main/cgt_calc/resources/eri/vanguard_eri.csv)
+-   [Vanguard Funds 2018-2024](https://github.com/KapJI/capital-gains-calculator/blob/main/cgt_calc/resources/eri/vanguard_eri.csv)
 -   [Blackrock Funds 2019-2024](https://github.com/KapJI/capital-gains-calculator/blob/main/cgt_calc/resources/eri/blackrock_eri.csv)
 -   [iShares Funds 2018-2024](https://github.com/KapJI/capital-gains-calculator/blob/main/cgt_calc/resources/eri/ishares_eri.csv)
 
