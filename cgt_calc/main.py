@@ -11,6 +11,8 @@ import importlib.metadata
 import logging
 from pathlib import Path
 import sys
+from typing import TYPE_CHECKING
+from iso3166 import countries_by_alpha2
 
 from . import render_latex
 from .args_parser import create_parser
@@ -63,6 +65,9 @@ from .setup_logging import setup_logging
 from .spin_off_handler import SpinOffHandler
 from .transaction_log import add_to_list, has_key
 from .util import approx_equal, round_decimal
+
+if TYPE_CHECKING:
+    from iso3166 import Country
 
 LOGGER = logging.getLogger(__name__)
 
@@ -158,8 +163,7 @@ class CapitalGainsCalculator:
         self.balance_check = balance_check
         self.calc_unrealized_gains = calc_unrealized_gains
         self.interest_fund_tickers = interest_fund_tickers
-        self.total_uk_interest = Decimal(0)
-        self.total_foreign_interest = Decimal(0)
+        self.interest_by_country: dict[Country, Decimal] = defaultdict(Decimal)
 
         self.acquisition_list: HmrcTransactionLog = {}
         self.disposal_list: HmrcTransactionLog = {}
@@ -1046,14 +1050,9 @@ class CapitalGainsCalculator:
             gbp_amount = self.currency_converter.to_gbp(
                 foreign_amount.amount, foreign_amount.currency, date
             )
-            if foreign_amount.currency == COUNTRY_CURRENCY:
-                self.total_uk_interest += gbp_amount
-                rule_prefix = "interestUK"
-            else:
-                self.total_foreign_interest += gbp_amount
-                rule_prefix = "interestForeign"
+            self.interest_by_country[foreign_amount.country] += gbp_amount
 
-            self.calculation_log_yields[date][f"{rule_prefix}${broker}"] = [
+            self.calculation_log_yields[date][f"interest${broker}"] = [
                 CalculationEntry(
                     rule_type=RuleType.INTEREST,
                     quantity=Decimal(1),
@@ -1104,7 +1103,7 @@ class CapitalGainsCalculator:
                                 "base taxation rules (expected %.2f base tax for %s "
                                 "but %.2f was deducted) for %s ticker!",
                                 expected_tax,
-                                treaty.country,
+                                treaty.country.name,
                                 tax.amount,
                                 symbol,
                             )
@@ -1140,7 +1139,7 @@ class CapitalGainsCalculator:
                 ]
 
                 if is_interest_fund:
-                    self.total_foreign_interest += amount
+                    self.add_interest_from_symbol(symbol, amount)
 
     def calculate_capital_gain(
         self,
@@ -1255,7 +1254,7 @@ class CapitalGainsCalculator:
                     data = self.eris_distribution[date_index][symbol]
                     is_interest = symbol in self.interest_fund_tickers
                     if is_interest:
-                        self.total_foreign_interest += data.amount
+                        self.add_interest_from_symbol(symbol, data.amount)
                     self.calculation_log_yields[date_index][
                         f"excess-reported-income-distribution${symbol}"
                     ] = [
@@ -1327,6 +1326,13 @@ class CapitalGainsCalculator:
             amount,
             unrealized_gains,
         )
+    
+    def add_interest_from_symbol(self,symbol:str, gbp_amount: Decimal):
+        """Add the input interest value for the specific input symbol."""
+        isin = self.isin_converter.get_isin(symbol)
+        assert isin, f"Missing ISIN for {symbol}, please add it manually to the isin converter file"
+        self.interest_by_country[countries_by_alpha2.get(isin[:2])] += gbp_amount
+
 
 
 def main() -> int:

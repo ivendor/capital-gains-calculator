@@ -32,6 +32,8 @@ requires-python = ">=3.12"
 dependencies = [
   "colorama>=0.4.6",
   "defusedxml>=0.7.1,<1.0.0",
+  "iso3166>=2.1.1",
+  "iso4217parse>=0.6.2",
   "Jinja2>=2.11.3,<4.0.0",
   "pandas>=2.2",
   "requests>=2.27.1",

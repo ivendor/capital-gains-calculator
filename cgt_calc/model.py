@@ -8,10 +8,14 @@ from decimal import Decimal
 from enum import Enum
 from typing import TYPE_CHECKING
 
-from .util import approx_equal, round_decimal
+from iso3166 import countries_by_alpha2
+
+from .util import approx_equal, is_currency, is_isin, round_decimal
 
 if TYPE_CHECKING:
     from collections.abc import Generator
+
+    from iso3166 import Country
 
 
 @dataclass
@@ -33,7 +37,7 @@ class SpinOff:
 class TaxTreaty:
     """Class representing a treaty between UK and different countries."""
 
-    country: str
+    country: Country
     country_rate: Decimal
     treaty_rate: Decimal
 
@@ -104,6 +108,7 @@ class ForeignCurrencyAmount:
 
     amount: Decimal = Decimal(0)
     currency: str = ""
+    country: Country | None = None
 
     def __add__(self, amount: ForeignCurrencyAmount) -> ForeignCurrencyAmount:
         """Add two amounts."""
@@ -113,14 +118,24 @@ class ForeignCurrencyAmount:
         assert amount.currency or not amount.amount, (
             f"Invalid foreign currency amount {amount}"
         )
+        assert amount.country or not amount.currency, (
+            f"Invalid foreign currency country {amount}"
+        )
         assert (
             not self.currency or not amount.currency or self.currency == amount.currency
         ), f"Incompatible currency operation {self.currency} vs {amount.currency}"
+        assert (
+            not self.country or not amount.country or self.country == amount.country
+        ), f"Incompatible currency operation {self.country} vs {amount.country}"
         result = ForeignCurrencyAmount(
             amount=self.amount + amount.amount,
             currency=self.currency or amount.currency,
+            country=self.country or amount.country,
         )
         assert result.currency or not result.amount, (
+            f"Invalid foreign currency result {result}"
+        )
+        assert result.country or not result.currency, (
             f"Invalid foreign currency result {result}"
         )
         return result
@@ -178,6 +193,18 @@ class BrokerTransaction:
     currency: str
     broker: str
     isin: str | None = None
+    country: Country | None = None
+
+    def __post_init__(self) -> None:
+        """Validate BrokerTransaction data."""
+        assert is_currency(self.currency), (
+            f"Invalid Currency {self.currency} for transaction {self}"
+        )
+        assert not self.isin or is_isin(self.isin), (
+            f"Invalid ISIN {self.isin} for transaction {self}"
+        )
+        if self.isin and not self.country:
+            self.country = countries_by_alpha2.get(self.isin[:2])            
 
 
 class RuleType(Enum):

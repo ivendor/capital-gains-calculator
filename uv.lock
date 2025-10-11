@@ -97,6 +97,8 @@ source = { editable = "." }
 dependencies = [
     { name = "colorama" },
     { name = "defusedxml" },
+    { name = "iso3166" },
+    { name = "iso4217parse" },
     { name = "jinja2" },
     { name = "pandas" },
     { name = "requests" },
@@ -123,6 +125,8 @@ dev = [
 requires-dist = [
     { name = "colorama", specifier = ">=0.4.6" },
     { name = "defusedxml", specifier = ">=0.7.1,<1.0.0" },
+    { name = "iso3166", specifier = ">=2.1.1" },
+    { name = "iso4217parse", specifier = ">=0.6.2" },
     { name = "jinja2", specifier = ">=2.11.3,<4.0.0" },
     { name = "pandas", specifier = ">=2.2" },
     { name = "requests", specifier = ">=2.27.1" },
@@ -272,6 +276,21 @@ sdist = { url = "https://files.pythonhosted.org/packages/f2/97/ebf4da567aa6827c9
 wheels = [
     { url = "https://files.pythonhosted.org/packages/2c/e1/e6716421ea10d38022b952c159d5161ca1193197fb744506875fbb87ea7b/iniconfig-2.1.0-py3-none-any.whl", hash = "sha256:9deba5723312380e77435581c6bf4935c94cbfab9b1ed33ef8d238ea168eb760", size = 6050, upload-time = "2025-03-19T20:10:01.071Z" },
 ]
+
+[[package]]
+name = "iso3166"
+version = "2.1.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/5c/11/b5023c736a185a88ebd0d38646af6f4d1b4c9b91f2ca84e08e5d2bc7ac3c/iso3166-2.1.1.tar.gz", hash = "sha256:fcd551b8dda66b44e9f9e6d6bbbee3a1145a22447c0a556e5d0fb1ad1e491719", size = 12807, upload-time = "2022-07-12T04:07:57.294Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/08/d0/bf18725b8d47f37858ff801f8e4d40c6982730a899725bdb6ded62199954/iso3166-2.1.1-py3-none-any.whl", hash = "sha256:263660b36f8471c42acd1ff673d28a3715edbce7d24b1550d0cf010f6816c47f", size = 9829, upload-time = "2022-07-12T04:07:55.54Z" },
+]
+
+[[package]]
+name = "iso4217parse"
+version = "0.6.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/8f/98/71102b74a81436e7f653f9702549556314308944663a6dab7ec9f9a5d0b1/iso4217parse-0.6.2.tar.gz", hash = "sha256:a7fe41fcd192c66731f584e24b5391b518d9e332edd35cde1cc05beeebf6c620", size = 22511, upload-time = "2025-03-31T11:50:27.365Z" }
 
 [[package]]
 name = "isort"

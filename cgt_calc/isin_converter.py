@@ -33,31 +33,40 @@ class IsinConverter:
         # https://www.openfigi.com/api/documentation#rate-limits
         self.session = LimiterSession(per_minute=24)
         self.isin_translation_file = isin_translation_file
+
+        # Map ISIN to list of tickers
         self.data: dict[str, set[str]] = read_isin_translation_file(
             resources.files(RESOURCES_PACKAGE).joinpath(INITIAL_ISIN_TRANSLATION_FILE)
         )
+        # Map ISIN to list of tickers used to write into the output file
         self.write_data: dict[str, set[str]] = {}
         if isin_translation_file is not None and Path(isin_translation_file).is_file():
             self.write_data = read_isin_translation_file(Path(isin_translation_file))
             self.data.update(self.write_data)
 
+        # Reverse mapping of tickers to ISIN
+        self.reverse_data: dict[str, str] = {}
+
         self.validate_data()
 
     def validate_data(self) -> None:
-        """Validate the current ISIN translation data."""
+        """Validate the current ISIN translation data.
+        
+        Generates the reverse cache
+        """
 
-        reverse_cache: dict[str, str] = {}
+        self.reverse_data = {}
         for isin, symbols in self.data.items():
             assert is_isin(isin), f"{isin} not a valid ISIN!"
             for symbol in symbols:
                 assert symbol, f"Invalid empty ticker for {isin} ISIN"
-                assert (symbol not in reverse_cache) or (
-                    reverse_cache[symbol] == "ISIN"
+                assert (symbol not in self.reverse_data) or (
+                    self.reverse_data[symbol] == "ISIN"
                 ), (
-                    f"Found multiple ISINs {isin},{reverse_cache[symbol]} "
+                    f"Found multiple ISINs {isin},{self.reverse_data[symbol]} "
                     f"for the same ticker {symbol}"
                 )
-                reverse_cache[symbol] = isin
+                self.reverse_data[symbol] = isin
 
     def add_from_transaction(self, transaction: BrokerTransaction) -> None:
         """Add the ISIN to symbol mapping from an existing transaction."""
@@ -90,6 +99,9 @@ class IsinConverter:
                 self.write_data[isin] = result
                 self._write_isin_translation_file()
         return result
+    
+    def get_isin(self, symbol: str) -> str | None:
+        return  self.reverse_data.get(symbol)
 
     def _write_isin_translation_file(self) -> None:
         self.validate_data()
@@ -100,17 +112,23 @@ class IsinConverter:
             writer = csv.writer(fout)
             writer.writerows([ISIN_TRANSLATION_HEADER, *data_rows])
 
-    def _fetch_live(self, isin: str) -> set[str]:
+    def _fetch_isin_live(self, isin: str) -> set[str]:
+        return self._fetch_mapping_live("ID_ISIN", isin, "ticker")
+
+    def _fetch_ticker_liver(self, ticker: str) -> set[str]:
+        return self._fetch_mapping_live("TICKER", ticker, "ticker")
+
+    def _fetch_mapping_live(self, src_id_type: str, src_value: str, dst_field: str) -> set[str]:
         url = "https://api.openfigi.com/v3/mapping"
         headers = {"Content-type": "application/json"}
-        data = [{"idType": "ID_ISIN", "idValue": isin}]
+        data = [{"idType": "TICKER", "idValue": ticker}]
         response_text = ""
         try:
             response = self.session.post(url, json=data, headers=headers, timeout=10)
             response_text = response.text
             json_response = response.json()
         except Exception as err:
-            msg = f"Error while fetching ISIN information for {isin} "
+            msg = f"Error while fetching ticker information for {ticker} "
             if response_text:
                 msg += f"Response was: {response_text}"
             msg += "Either try again or if you're sure about the translation you can "
@@ -124,7 +142,7 @@ class IsinConverter:
             or "data" not in json_response[0]
         ):
             LOGGER.warning(
-                "Couldn't translate ISIN %s: Invalid Response: %s", isin, json_response
+                "Couldn't translate ticker %s: Invalid Response: %s", ticker, json_response
             )
             return set()
 
@@ -155,4 +173,4 @@ class IsinConverter:
         LOGGER.warning(
             "Couldn't translate ISIN %s: Match not found in %s", isin, json_data
         )
-        return set()
+        return set()    

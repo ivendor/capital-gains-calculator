@@ -10,6 +10,8 @@ from pathlib import Path
 import re
 from typing import Final
 
+from iso3166 import countries
+
 from cgt_calc.exceptions import ParsingError, UnexpectedColumnCountError
 from cgt_calc.model import ActionType, BrokerTransaction
 
@@ -66,6 +68,7 @@ class VanguardTransaction(BrokerTransaction):
     ):
         """Create transaction from CSV row."""
         currency = "GBP"
+        country = None
         broker = "Vanguard"
 
         if len(row_raw) != len(COLUMNS):
@@ -109,6 +112,9 @@ class VanguardTransaction(BrokerTransaction):
             currency = match.group(2)
             price = Decimal(match.group(3).replace(",", ""))
             quantity = Decimal(round(amount / price))
+        elif action == ActionType.INTEREST:
+            assert currency == "GBP"
+            country = countries.get("GB")
 
         super().__init__(
             date,
@@ -121,6 +127,7 @@ class VanguardTransaction(BrokerTransaction):
             amount,
             currency,
             broker,
+            country=country
         )
 
 

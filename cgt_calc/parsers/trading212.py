@@ -9,9 +9,12 @@ import logging
 from pathlib import Path
 from typing import Final
 
+from iso3166 import countries
+
 from cgt_calc.const import TICKER_RENAMES
 from cgt_calc.exceptions import ParsingError, UnexpectedColumnCountError
 from cgt_calc.model import ActionType, BrokerTransaction
+
 
 COLUMNS: Final[list[str]] = [
     "Action",
@@ -102,6 +105,7 @@ class Trading212Transaction(BrokerTransaction):
 
     def __init__(self, header: list[str], row_raw: list[str], filename: str):
         """Create transaction from CSV row."""
+        country = None
         if len(row_raw) != len(header):
             raise UnexpectedColumnCountError(row_raw, len(header), filename)
         row = dict(zip(header, row_raw, strict=True))
@@ -182,6 +186,10 @@ class Trading212Transaction(BrokerTransaction):
                     float(discrepancy),
                 )
 
+        if action == ActionType.INTEREST:
+            assert currency == "GBP"
+            country = countries.get("GB")
+
         isin = row["ISIN"]
         self.transaction_id = row.get("ID")
         self.notes = row.get("Notes")
@@ -198,6 +206,7 @@ class Trading212Transaction(BrokerTransaction):
             currency,
             broker,
             isin,
+            country=country
         )
 
     def __hash__(self) -> int:

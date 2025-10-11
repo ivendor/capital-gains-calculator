@@ -181,7 +181,7 @@
             (tax paid at source: £\VAR{ "{:,}".format(round_decimal(-entries[0].dividend.tax_at_source, 2)) })
         \BLOCK{ endif }
         \BLOCK{ if entries[0].dividend.tax_treaty }
-            , tax treaty amount: £\VAR{ "{:,}".format(round_decimal(entries[0].dividend.tax_treaty_amount, 2)) } (treaty rate for \VAR{ entries[0].dividend.tax_treaty.country }: \VAR{ round_decimal(100 * entries[0].dividend.tax_treaty.treaty_rate, 2) }\%)
+            , tax treaty amount: £\VAR{ "{:,}".format(round_decimal(entries[0].dividend.tax_treaty_amount, 2)) } (treaty rate for \VAR{ entries[0].dividend.tax_treaty.country.name }: \VAR{ round_decimal(100 * entries[0].dividend.tax_treaty.treaty_rate, 2) }\%)
         \BLOCK{ endif }
     \BLOCK{ elif is_interest } % if is_interest
         \BLOCK{ set interest_count.value = interest_count.value + 1 }

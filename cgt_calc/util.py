@@ -4,6 +4,8 @@ import decimal
 from decimal import Decimal
 import re
 
+import iso4217parse
+
 
 def round_decimal(value: Decimal, digits: int = 0) -> Decimal:
     """Round decimal to given precision."""
@@ -63,3 +65,8 @@ def approx_equal(val_a: Decimal, val_b: Decimal) -> bool:
     so assume the values are equal if they are within 0.01.
     """
     return abs(val_a - val_b) < Decimal("0.01")
+
+
+def is_currency(currency_str: str) -> bool:
+    """Check if the input string is a valid currency."""
+    return bool(iso4217parse.by_alpha3(currency_str))
